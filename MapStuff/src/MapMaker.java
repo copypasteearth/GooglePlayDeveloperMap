@@ -204,21 +204,22 @@ public class MapMaker {
                                     map.put(date, hmap);
                                     hmap = new HashMap<String, Integer[]>();
                                 }
-                                date = columns[0];
-                                Integer[] how = new Integer[comeon];
-                                for (int z = 3, x = 0; z < columns.length; z++, x++) {
-                                    String how1 = columns[z].trim();
-                                    byte[] array1 = new String(how1.getBytes()).replaceAll("\0", "").getBytes();
-                                    how1 = new String(array1);
-                                    how[x] = Integer.parseInt(how1);
-                                    if (how[x] > integral[x]) {
-                                        integral[x] = how[x];
-                                    }
-                                }
+                               //put back maybe
                                 //String how = columns[3].trim();
                                 //byte[] array1 = new String(how.getBytes()).replaceAll("\0", "").getBytes();
                                 // how = new String(array1);
                                 if (!columns[2].trim().equals("")) {
+                                    date = columns[0];
+                                    Integer[] how = new Integer[comeon];
+                                    for (int z = 3, x = 0; z < columns.length; z++, x++) {
+                                        String how1 = columns[z].trim();
+                                        byte[] array1 = new String(how1.getBytes()).replaceAll("\0", "").getBytes();
+                                        how1 = new String(array1);
+                                        how[x] = Integer.parseInt(how1);
+                                        if (how[x] > integral[x]) {
+                                            integral[x] = how[x];
+                                        }
+                                    }
                                     //Integer now = Integer.parseInt(how);
                                     // hmap.put(columns[2].toLowerCase(),now);
                                     hmap.put(columns[2].toLowerCase(), how);
