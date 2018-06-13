@@ -1,29 +1,18 @@
-import javafx.scene.control.CheckBox;
-import org.apache.batik.dom.svg.SAXSVGDocumentFactory;
-import org.apache.batik.dom.svg.SVGDOMImplementation;
+
+import org.apache.batik.anim.dom.SAXSVGDocumentFactory;
 import org.apache.batik.swing.JSVGCanvas;
 import org.apache.batik.swing.gvt.Interactor;
-import org.apache.batik.transcoder.TranscoderInput;
-import org.apache.batik.transcoder.image.PNGTranscoder;
 import org.apache.batik.util.XMLResourceDescriptor;
-
-
 import org.w3c.dom.*;
-import org.w3c.dom.svg.SVGDocument;
 import org.w3c.dom.svg.SVGStyleElement;
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.AffineTransform;
 import java.io.*;
-import java.net.URISyntaxException;
 import java.util.*;
 import java.util.List;
-import java.util.prefs.BackingStoreException;
-import java.util.prefs.Preferences;
-
-import static org.apache.batik.dom.svg.SVGDOMImplementation.SVG_NAMESPACE_URI;
+import static org.apache.batik.util.SVGConstants.SVG_NAMESPACE_URI;
 
 public class MapMaker {
 
@@ -51,6 +40,7 @@ public class MapMaker {
     private double translateY;
     private Point textPt = new Point(900/2,900/2);
     private Point mousePt;
+    JTextArea area = new JTextArea();
     boolean first = true;
 
 
@@ -63,7 +53,8 @@ public class MapMaker {
 
         String parser = XMLResourceDescriptor.getXMLParserClassName();
         SAXSVGDocumentFactory f = new SAXSVGDocumentFactory(parser);
-
+        area.setText("");
+        Integer total = 0;
 
         try {
 
@@ -87,7 +78,7 @@ public class MapMaker {
                     Integer ha = integral[intey];
                     colors = createGradient(Color.BLUE, Color.RED, ha);
                     if(in != 0){
-
+                        total += in;
                         int r =colors[in].getRed();
                         int g = colors[in].getGreen();
                         int b = colors[in].getBlue();
@@ -95,6 +86,10 @@ public class MapMaker {
                         String how = "."+s+" {fill: "+hex+";}".replaceAll(""+(char)0,"");
                         byte[] array1 = new String(how.getBytes()).replaceAll("\0", "").getBytes();
                         how = new String(array1);
+                        System.out.println(how.substring(1,3));
+                        Locale l = new Locale("", how.substring(1,3));
+
+                        area.append("country: " + l.getDisplayCountry() + "     " + in + "\n");
                         SVGStyleElement sty = (SVGStyleElement) doc.createElementNS(SVG_NAMESPACE_URI, "style");
                         sty.setAttributeNS(null, "type", "text/css");
                         sty.appendChild(doc.createCDATASection(how));
@@ -103,6 +98,7 @@ public class MapMaker {
 
                 }
                 can.setDocument(doc);
+                area.append("total: " + total);
 
             }
 
@@ -364,7 +360,7 @@ getData();
             frame = new JFrame();
             can = new JSVGCanvas();
             can.setPreferredSize(new Dimension(900,900));
-
+            JScrollPane checkScroll = new JScrollPane();
 
 //Create the combo box, select item at index 4.
 //Indices start at 0, so 4 specifies the pig.
@@ -390,6 +386,7 @@ getData();
 
                 }
             });
+           // checkScroll.add(check);
             Checkbox check1 = new Checkbox("Daily Device Uninstalls",cbg,false);
             check1.addItemListener(new ItemListener() {
                 public void itemStateChanged(ItemEvent e) {
@@ -397,6 +394,7 @@ getData();
                     updateSVG(dateUpdate,selected);
                 }
             });
+            //checkScroll.add(check1);
             Checkbox check2 = new Checkbox("Daily Device Upgrades",cbg,false);
             check2.addItemListener(new ItemListener() {
                 public void itemStateChanged(ItemEvent e) {
@@ -404,6 +402,7 @@ getData();
                     updateSVG(dateUpdate,selected);
                 }
             });
+           // checkScroll.add(check2);
             Checkbox check3 = new Checkbox("Total User Installs",cbg,false);
             check3.addItemListener(new ItemListener() {
                 public void itemStateChanged(ItemEvent e) {
@@ -411,6 +410,7 @@ getData();
                     updateSVG(dateUpdate,selected);
                 }
             });
+           // checkScroll.add(check3);
             Checkbox check4 = new Checkbox("Daily User Installs",cbg,false);
             check4.addItemListener(new ItemListener() {
                 public void itemStateChanged(ItemEvent e) {
@@ -418,6 +418,7 @@ getData();
                     updateSVG(dateUpdate,selected);
                 }
             });
+           // checkScroll.add(check4);
             Checkbox check5 = new Checkbox("Daily User Uninstalls",cbg,false);
             check5.addItemListener(new ItemListener() {
                 public void itemStateChanged(ItemEvent e) {
@@ -425,6 +426,7 @@ getData();
                     updateSVG(dateUpdate,selected);
                 }
             });
+            //checkScroll.add(check5);
             Checkbox check6 = new Checkbox("Active Device Installs",cbg,false);
             check6.addItemListener(new ItemListener() {
                 public void itemStateChanged(ItemEvent e) {
@@ -432,6 +434,7 @@ getData();
                     updateSVG(dateUpdate,selected);
                 }
             });
+            //checkScroll.add(check6);
             Checkbox check7 = new Checkbox("Install events",cbg,false);
 
             Checkbox check8 = new Checkbox("Update events",cbg,false);
@@ -445,18 +448,21 @@ getData();
                         updateSVG(dateUpdate,selected);
                     }
                 });
+               // checkScroll.add(check7);
                 check8.addItemListener(new ItemListener() {
                     public void itemStateChanged(ItemEvent e) {
                         selected = 8;
                         updateSVG(dateUpdate,selected);
                     }
                 });
+               // checkScroll.add(check8);
                 check9.addItemListener(new ItemListener() {
                     public void itemStateChanged(ItemEvent e) {
                         selected = 9;
                         updateSVG(dateUpdate,selected);
                     }
                 });
+                //checkScroll.add(check9);
             }
 
             can.setDocument(doc);
@@ -469,15 +475,17 @@ getData();
 
             list.add(act);
             JPanel pan = new JPanel();
-            pan.setLayout(new BoxLayout(pan, BoxLayout.LINE_AXIS));
+            pan.setLayout(new BoxLayout(pan, BoxLayout.X_AXIS));
             pan.add(Box.createHorizontalGlue());
+            //checkScroll.createHorizontalScrollBar();
+           // pan.add(checkScroll);
             pan.add(petList);
             pan.add(check);
             pan.add(check1);
             pan.add(check2);
             pan.add(check3);
             pan.add(check4);
-            pan.add(check5);
+           pan.add(check5);
             pan.add(check6);
             if(comeon != 7) {
                 pan.add(check7);
@@ -651,6 +659,10 @@ getData();
             //panel.add(pan);
 
             panel.add(can);
+            area = new JTextArea();
+            JScrollPane areaScroll = new JScrollPane(area);
+            areaScroll.setPreferredSize(new Dimension(900,300));
+            panel.add(areaScroll);
             zoom = 1;
 
             can.addMouseWheelListener(new MouseWheelListener() {
@@ -682,11 +694,16 @@ getData();
 
             Container contentPane = frame.getContentPane();
             contentPane.add(panel, BorderLayout.CENTER);
-            contentPane.add(pan, BorderLayout.PAGE_START);
+            checkScroll.add(pan);
+            JScrollPane jScrollPane = new JScrollPane(pan);
+            jScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
+            jScrollPane.setPreferredSize(new Dimension (200, 50));
+
+            contentPane.add(jScrollPane, BorderLayout.PAGE_START);
             //frame.add(pan);
            // frame.add(panel);
             frame.setJMenuBar(menuBar);
-            frame.setSize(1000,1000);
+            frame.setSize(500,500);
             frame.addComponentListener(new ComponentAdapter() {
                 public void componentResized(ComponentEvent componentEvent) {
                     // do stuff
@@ -694,6 +711,14 @@ getData();
                 }
             });
             frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+            GraphicsDevice defaultScreen = ge.getDefaultScreenDevice();
+
+            Rectangle rect = defaultScreen.getDefaultConfiguration().getBounds();
+            int x = (int) rect.getMaxX() - frame.getWidth();
+            int y = 0;
+            frame.setLocation(x, y);
+
             frame.setVisible(true);
             updateSVG(dateUpdate,selected);
 
