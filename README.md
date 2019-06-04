@@ -13,6 +13,8 @@ you are going to need your gsutil number too its like this
 
 gs://pubsite_prod_rev_14260973602865971339
 
-and enter your package name and the month and year in settings and youre good to go!!!
+and enter your package names with a comma inbetween each
+
+enter the month and year in settings and youre good to go!!!
 
 

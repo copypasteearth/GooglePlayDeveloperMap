@@ -1,5 +1,7 @@
 
 import org.apache.batik.anim.dom.SAXSVGDocumentFactory;
+import org.apache.batik.bridge.*;
+import org.apache.batik.gvt.GraphicsNode;
 import org.apache.batik.swing.JSVGCanvas;
 import org.apache.batik.swing.gvt.Interactor;
 import org.apache.batik.util.XMLResourceDescriptor;
@@ -9,6 +11,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Point2D;
 import java.io.*;
 import java.util.*;
 import java.util.List;
@@ -29,7 +32,8 @@ public class MapMaker {
     String dateUpdate = "";
     CheckboxGroup cbg;
     Integer selected = 0;
-    JComboBox petList= new JComboBox();;
+    JComboBox petList= new JComboBox();
+    JComboBox packageLists = new JComboBox();
     public boolean go = true;
     int comeon = 0;
     JFrame frame;
@@ -48,6 +52,27 @@ public class MapMaker {
     public static void main(String... args) {
 
         new MapMaker().getInfoSetDoc();
+    }
+    public Element elementAtPosition(Document doc, Point2D point) {
+        UserAgent userAgent = new UserAgentAdapter();
+        DocumentLoader loader = new DocumentLoader(userAgent);
+        BridgeContext context = new BridgeContext(userAgent, loader);
+        context.setDynamicState(BridgeContext.DYNAMIC);
+        GVTBuilder builder = new GVTBuilder();
+        GraphicsNode rootGraphicsNode = builder.build(context, doc);
+
+        // rootGraphicsNode can be offseted relative to coordinate system
+        // that means calling this method on coordinates taken directly from the svg file might not work
+        // check the bounds of rootGraphicsNode to determine where the elements actually are
+        // System.out.println(rootGraphicsNode.getBounds());
+
+        GraphicsNode graphicsNode = rootGraphicsNode.nodeHitAt(point);
+        if (graphicsNode != null) {
+            return context.getElement(graphicsNode);
+        } else {
+            // if graphicsNode is null there is no element at this position
+            return null;
+        }
     }
     public void updateSVG(String str,Integer intey){
 
@@ -83,10 +108,10 @@ public class MapMaker {
                         int g = colors[in].getGreen();
                         int b = colors[in].getBlue();
                         String hex = String.format("#%02x%02x%02x", r, g, b);
-                        String how = "."+s+" {fill: "+hex+";}".replaceAll(""+(char)0,"");
+                        String how = ("."+s+" {fill: "+hex+";}").replaceAll(""+(char)0,"");
                         byte[] array1 = new String(how.getBytes()).replaceAll("\0", "").getBytes();
                         how = new String(array1);
-                        System.out.println(how.substring(1,3));
+
                         Locale l = new Locale("", how.substring(1,3));
 
                         area.append("country: " + l.getDisplayCountry() + "     " + in + "\n");
@@ -104,7 +129,7 @@ public class MapMaker {
 
         }
     }
-    public void getData() {
+    public void refreshCSVS() {
         try {
             final File file = new File(System.getProperty("user.home") + File.separator + "mapsplaygsutil.txt");
             String gutTF = "not configured";
@@ -112,148 +137,228 @@ public class MapMaker {
             String folder = "not configured";
             String year = "2018";
             String month = "03";
-            String packagename = "not configured";
+            String[] packagename = new String[0];
             if (file.exists()) {
 
-                    BufferedReader read = new BufferedReader(new FileReader(file));
-                    String line = "";
-                    while ((line = read.readLine()) != null) {
-                        if (line.startsWith("gsutil")) {
-                            String[] split = line.split(",");
-                            gutTF = split[1];
-                        }
-                        if (line.startsWith("gspath")) {
-                            String[] split = line.split(",");
-                            gspub = split[1];
-                        }
-                        if (line.startsWith("year")) {
-                            String[] split = line.split(",");
-                            year = split[1];
-                        }
-                        if (line.startsWith("month")) {
-                            String[] split = line.split(",");
-                            month = split[1];
-                        }
-                        if (line.startsWith("folder")) {
-                            String[] split = line.split(",");
-                            folder = split[1];
-                        }
-                        if (line.startsWith("package")) {
-                            String[] split = line.split(",");
-                            packagename = split[1];
+                BufferedReader read = null;
+
+                    read = new BufferedReader(new FileReader(file));
+
+                String line = "";
+                while ((line = read.readLine()) != null) {
+                    if (line.startsWith("gsutil")) {
+                        String[] split = line.split(",");
+                        gutTF = split[1];
+                    }
+                    if (line.startsWith("gspath")) {
+                        String[] split = line.split(",");
+                        gspub = split[1];
+                    }
+                    if (line.startsWith("year")) {
+                        String[] split = line.split(",");
+                        year = split[1];
+                    }
+                    if (line.startsWith("month")) {
+                        String[] split = line.split(",");
+                        month = split[1];
+                    }
+                    if (line.startsWith("folder")) {
+                        String[] split = line.split(",");
+                        folder = split[1];
+                    }
+                    if (line.startsWith("package")) {
+                        String[] split = line.split(",");
+                        packagename = new String[split.length-1];
+                        for(int i = 1;i < split.length;i++) {
+                            packagename[i - 1] = split[i];
                         }
                     }
+                }
+
                     read.close();
 
-
+                for(int j = 0;j < packagename.length;j++) {
                     String[] commands = new String[]{gutTF, "cp", "-r",
-                            gspub + "/stats/installs/installs_" + packagename +"_"+ year + "" + month + "_country.csv",
+                            gspub + "/stats/installs/installs_" + packagename[j] + "_" + year + "" + month + "_country.csv",
                             folder};
-
-
                     Process child = Runtime.getRuntime().exec(commands);
-                    try {
-                        Thread.sleep(5000);
-                    }catch (InterruptedException e){
-
-                    }
-                   // System.out.println("exit: " +child.exitValue());
-
-
-                    File file1 = new File(folder + File.separator + "installs_" + packagename+"_"+year+month+"_country.csv");
-                    BufferedReader reader = new BufferedReader(new FileReader(file1));
-                    ArrayList<String> countrys = new ArrayList<String>();
-                    String line1 = "";
-                    int count1 = 0;
-                    String date = "";
-                    //Daily Device Installs,Daily Device Uninstalls,Daily Device Upgrades,Total User Installs,Daily User Installs,Daily User Uninstalls,Active Device Installs
-                    //Daily Device Installs,Daily Device Uninstalls,Daily Device Upgrades,Total User Installs,Daily User Installs,Daily User Uninstalls,Active Device Installs,Install events,Update events,Uninstall events
-                boolean first = true;
-                comeon = 0;
-                    while ((line1 = reader.readLine()) != null) {
-                        if (line1.trim().equals("")) {
-                            map.put(date, hmap);
-                            hmap = new HashMap<String, Integer[]>();
-                            for (int i = 0; i < integral.length; i++) {
-                                integral[i]++;
-                            }
-                            break;
-                        }
-
-                        if (count1 == 0) {
-                            count1++;
-                        } else {
-                            String[] columns = line1.split(",");
-                            if(first){
-                                map = new HashMap<String, HashMap<String, Integer[]>>();
-                                hmap = new HashMap<String, Integer[]>();
-                                comeon = columns.length - 3;
-
-                                integral = new Integer[comeon];
-                                for(int u = 0;u < integral.length;u++){
-                                    integral[u] = 0;
-                                }
-                                first = false;
-                            }
-                            if (columns[0].startsWith("sep")) {
-
-                            } else if (columns[0].startsWith("Date")) {
-
-                            } else {
-                                if (!date.equals(columns[0]) && !date.equals("")) {
-                                    map.put(date, hmap);
-                                    hmap = new HashMap<String, Integer[]>();
-                                }
-                               //put back maybe
-                                //String how = columns[3].trim();
-                                //byte[] array1 = new String(how.getBytes()).replaceAll("\0", "").getBytes();
-                                // how = new String(array1);
-                                if (!columns[2].trim().equals("")) {
-                                    date = columns[0];
-                                    Integer[] how = new Integer[comeon];
-                                    for (int z = 3, x = 0; z < columns.length; z++, x++) {
-                                        String how1 = columns[z].trim();
-                                        byte[] array1 = new String(how1.getBytes()).replaceAll("\0", "").getBytes();
-                                        how1 = new String(array1);
-                                        how[x] = Integer.parseInt(how1);
-                                        if (how[x] > integral[x]) {
-                                            integral[x] = how[x];
-                                        }
-                                    }
-                                    //Integer now = Integer.parseInt(how);
-                                    // hmap.put(columns[2].toLowerCase(),now);
-                                    hmap.put(columns[2].toLowerCase(), how);
-                                    //if(now > integral)
-                                    // integral = now;
-                                }
-
-                            }
-                        }
-                    }
-                    Object[] dates = map.keySet().toArray();
-                    Arrays.sort(dates);
-                    dateUpdate = (String) dates[0];
-                    petList = new JComboBox(dates);
-                    petList.addActionListener(new ActionListener() {
-                        public void actionPerformed(ActionEvent e) {
-                            JComboBox cb = (JComboBox) e.getSource();
-                            dateUpdate = (String) cb.getSelectedItem();
-                            updateSVG(dateUpdate, selected);
-                        }
-                    });
                 }
 
 
 
-        } catch (IOException e) {
+
+            }
+        } catch (FileNotFoundException e) {
             e.printStackTrace();
-            go = false;
+        } catch(IOException e){
+
         }
     }
-    @SuppressWarnings("unchecked")
+    public void getData(String whichPackage) {
+
+        try {
+            // System.out.println("exit: " +child.exitValue());
+
+            final File file = new File(System.getProperty("user.home") + File.separator + "mapsplaygsutil.txt");
+            String gutTF = "not configured";
+            String gspub = "not configured";
+            String folder = "not configured";
+            String year = "2018";
+            String month = "03";
+            String[] packagename = new String[0];
+            if (file.exists()) {
+
+                BufferedReader read = null;
+
+                read = new BufferedReader(new FileReader(file));
+
+                String line = "";
+                while ((line = read.readLine()) != null) {
+                    if (line.startsWith("gsutil")) {
+                        String[] split = line.split(",");
+                        gutTF = split[1];
+                    }
+                    if (line.startsWith("gspath")) {
+                        String[] split = line.split(",");
+                        gspub = split[1];
+                    }
+                    if (line.startsWith("year")) {
+                        String[] split = line.split(",");
+                        year = split[1];
+                    }
+                    if (line.startsWith("month")) {
+                        String[] split = line.split(",");
+                        month = split[1];
+                    }
+                    if (line.startsWith("folder")) {
+                        String[] split = line.split(",");
+                        folder = split[1];
+                    }
+                    if (line.startsWith("package")) {
+                        String[] split = line.split(",");
+                        packagename = new String[split.length - 1];
+                        for (int i = 1; i < split.length; i++) {
+                            packagename[i - 1] = split[i];
+                        }
+                    }
+                }
+                String pack = "";
+                if(whichPackage == null){
+                    pack = packagename[0];
+                }else{
+                    pack = whichPackage;
+                }
+                read.close();
+                File file1 = new File(folder + File.separator + "installs_" + pack + "_" + year + month + "_country.csv");
+                BufferedReader reader = new BufferedReader(new FileReader(file1));
+                ArrayList<String> countrys = new ArrayList<String>();
+                String line1 = "";
+                int count1 = 0;
+                String date = "";
+                //Daily Device Installs,Daily Device Uninstalls,Daily Device Upgrades,Total User Installs,Daily User Installs,Daily User Uninstalls,Active Device Installs
+                //Daily Device Installs,Daily Device Uninstalls,Daily Device Upgrades,Total User Installs,Daily User Installs,Daily User Uninstalls,Active Device Installs,Install events,Update events,Uninstall events
+                boolean first = true;
+                comeon = 0;
+                while ((line1 = reader.readLine()) != null) {
+                    if (line1.trim().equals("")) {
+                        System.out.println("putting another date");
+                        map.put(date, hmap);
+                        hmap = new HashMap<String, Integer[]>();
+                        for (int i = 0; i < integral.length; i++) {
+                            integral[i]++;
+                        }
+                        break;
+                    }
+
+                    if (count1 == 0) {
+                        count1++;
+                    } else {
+                        String[] columns = line1.split(",");
+                        if (first) {
+                            map = new HashMap<String, HashMap<String, Integer[]>>();
+                            hmap = new HashMap<String, Integer[]>();
+                            comeon = columns.length - 3;
+
+                            integral = new Integer[comeon];
+                            for (int u = 0; u < integral.length; u++) {
+                                integral[u] = 0;
+                            }
+                            first = false;
+                        }
+                        if (columns[0].startsWith("sep")) {
+
+                        } else if (columns[0].startsWith("Date")) {
+                            System.out.println("date");
+                        } else {
+                            if (!date.equals(columns[0]) && !date.equals("")) {
+                                System.out.println("adding date : " +date);
+                                map.put(date, hmap);
+                                hmap = new HashMap<String, Integer[]>();
+                                date = columns[0];
+                            }
+                            //put back maybe
+                            //String how = columns[3].trim();
+                            //byte[] array1 = new String(how.getBytes()).replaceAll("\0", "").getBytes();
+                            // how = new String(array1);
+                            if (!columns[2].trim().equals("")) {
+                                System.out.println("making date and things");
+                                date = columns[0];
+                                Integer[] how = new Integer[comeon];
+                                for (int z = 3, x = 0; z < columns.length; z++, x++) {
+                                    String how1 = columns[z].trim();
+                                    byte[] array1 = new String(how1.getBytes()).replaceAll("\0", "").getBytes();
+                                    how1 = new String(array1);
+                                    //System.out.println("how1 : " + how1);
+                                    how[x] = Integer.parseInt(how1);
+                                    if (how[x] > integral[x]) {
+                                        integral[x] = how[x];
+                                    }
+                                }
+                                //Integer now = Integer.parseInt(how);
+                                // hmap.put(columns[2].toLowerCase(),now);
+                                hmap.put(columns[2].toLowerCase(), how);
+                                //if(now > integral)
+                                // integral = now;
+                            }
+
+                        }
+                    }
+                }
+                Object[] dates = map.keySet().toArray();
+                Arrays.sort(dates);
+                //dateUpdate = (String) dates[0];
+                petList = new JComboBox(dates);
+                petList.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent e) {
+                        JComboBox cb = (JComboBox) e.getSource();
+                        dateUpdate = (String) cb.getSelectedItem();
+                        updateSVG(dateUpdate, selected);
+                    }
+                });
+                packageLists = new JComboBox(packagename);
+                packageLists.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        JComboBox cb = (JComboBox)e.getSource();
+                        String pac = (String)cb.getSelectedItem();
+                        getData(pac);
+                        updateSVG(dateUpdate,selected);
+                    }
+                });
+
+            }
+
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+        @SuppressWarnings("unchecked")
     public void getInfoSetDoc(){
         try {
-getData();
+            getData(null);
             System.out.println("int: " +integral);
 
             System.out.println("length: " + colors.length);
@@ -272,7 +377,7 @@ getData();
 
             Interactor act = new Interactor() {
                 public boolean startInteraction(InputEvent inputEvent) {
-                    System.out.println("deal: "+inputEvent.paramString());
+
                     return true;
                 }
 
@@ -281,46 +386,48 @@ getData();
                 }
 
                 public void keyTyped(KeyEvent e) {
-                    System.out.println(e.paramString());
+
                 }
 
                 public void keyPressed(KeyEvent e) {
-                    System.out.println(e.paramString());
+
                 }
 
                 public void keyReleased(KeyEvent e) {
-                    System.out.println(e.paramString());
+
                 }
 
                 public void mouseClicked(MouseEvent e) {
-                        System.out.println(e.paramString());
+
                     lastOffsetX = e.getX();
                     lastOffsetY = e.getY();
+                   //Element el = elementAtPosition(doc,(Point2D)e.getPoint());
+                   //System.out.println(el.toString());
 
 
                 }
 
                 public void mousePressed(MouseEvent e) {
-                    System.out.println(e.paramString());
+
 
                     mousePt = e.getPoint();
                 }
 
                 public void mouseReleased(MouseEvent e) {
-                    System.out.println(e.paramString());
+
 
                 }
 
                 public void mouseEntered(MouseEvent e) {
-                    System.out.println(e.paramString());
+
                 }
 
                 public void mouseExited(MouseEvent e) {
-                    System.out.println(e.paramString());
+
                 }
 
                 public void mouseDragged(MouseEvent e) {
-                    System.out.println(e.paramString());
+
                     // new x and y are defined by current mouse location subtracted
                     // by previously processed mouse location
                     int newX = e.getX()-lastOffsetX;
@@ -355,7 +462,7 @@ getData();
                 }
 
                 public void mouseMoved(MouseEvent e) {
-                    System.out.println(e.paramString());
+
                 }
             };
             frame = new JFrame();
@@ -467,6 +574,7 @@ getData();
             }
 
             can.setDocument(doc);
+            can.setDocumentState(JSVGCanvas.ALWAYS_DYNAMIC);
             System.out.println("width: "+can.getWidth());
 
             //can.getEnableImageZoomInteractor();
@@ -481,6 +589,7 @@ getData();
             //checkScroll.createHorizontalScrollBar();
            // pan.add(checkScroll);
             pan.add(petList);
+            pan.add(packageLists);
             pan.add(check);
             pan.add(check1);
             pan.add(check2);
@@ -653,6 +762,14 @@ getData();
                 }
             });
             menu.add(menuItem);
+            JMenuItem menIte = new JMenuItem("Refresh CSV");
+            menIte.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    refreshCSVS();
+                }
+            });
+            menu.add(menIte);
 
             final JPanel panel = new JPanel();
             panel.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
