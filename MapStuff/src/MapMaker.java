@@ -653,8 +653,8 @@ public class MapMaker {
                                     folder = split[1];
                                 }
                                 if(line.startsWith("package")){
-                                    String[] split = line.split(",");
-                                    packagename = split[1];
+                                    //String[] split = line.split(",");
+                                    packagename = line.replace("package,","");
                                 }
                             }
                             read.close();
